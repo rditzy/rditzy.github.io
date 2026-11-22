@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PiezoRail case study | Radit</title>
+  <meta name="description" content="PiezoRail: a prototype railway monitoring node powered by train vibration. Hardware, firmware, dashboard, design process, limits, and results.">
+  <meta property="og:title" content="PiezoRail case study | Radit">
+  <meta property="og:description" content="A prototype railway monitoring node powered by train vibration. What I built, what failed, and what I still do not know.">
+  <meta property="og:type" content="article">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="index.html">Radit</a>
+    <nav aria-label="Main">
+      <a href="index.html">Home</a>
+      <a href="piezorail.html" aria-current="page">PiezoRail</a>
+      <a href="about.html">About</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+  <h1>PiezoRail</h1>
+  <p class="lead">A prototype railway monitoring node that is powered by the vibration of passing trains.</p>
+
+  <div class="status" role="note">
+    <p><strong>Honest status</strong></p>
+    <p>PiezoRail is a working <strong>prototype</strong>. It has <strong>not</strong> been installed on a real railway.</p>
+    <p>The dashboard at piezorail.online is currently offline.</p>
+  </div>
+
+  <!-- PHOTO SLOT 1: final prototype (pad, glue sticks, acrylic). Uncomment and set the file name.
+  <figure>
+    <img src="images/prototype-final.jpg" alt="The final PiezoRail prototype: glue sticks arranged on a piezoelectric pad and clamped under clear acrylic." width="800" height="600">
+    <figcaption>The final prototype. Glue sticks sit on top of the piezoelectric pad and are clamped under clear acrylic.</figcaption>
+  </figure>
+  -->
+
+  <h2>The idea</h2>
+  <p>A sensor on a railway needs power. I wanted to see if the train itself could provide it. Piezoelectric pads produce a small voltage when they are pressed or vibrated. If that energy is stored and used carefully, a small sensor node could run without a battery change or a power cable.</p>
+  <p>I built the whole system around that idea: the energy harvester, the sensor node, the receiver, and the dashboard.</p>
+
+  <h2>How it works</h2>
+  <ol class="flow">
+    <li><strong>Train vibration</strong><span>Moves the piezoelectric pads.</span></li>
+    <li><strong>Piezoelectric pads</strong><span>Turn the movement into electrical energy.</span></li>
+    <li><strong>Supercapacitor, 5.5 V, 2 F</strong><span>Stores the energy.</span></li>
+    <li><strong>Transmitter node, ESP32-C6</strong><span>Wakes up, reads MPU6050 or ADXL345 (vibration) and DS18B20 (temperature), sends the data, then goes back to deep sleep. A MOSFET switches power to the sensors.</span></li>
+    <li><strong>Wireless link</strong><span>ESP-NOW in one version, Zigbee in another.</span></li>
+    <li><strong>Receiver, ESP32-S3</strong><span>Detects anomalies, saves a log to an SD card, and publishes the data over MQTT.</span></li>
+    <li><strong>Dashboard</strong><span>Multi-tab charts built with Chart.js.</span></li>
+  </ol>
+
+  <h3>What the system watches</h3>
+  <ul>
+    <li><strong>Vibration (RMS) at each node.</strong></li>
+    <li><strong>Temperature.</strong> Rails expand when they get hot, so temperature matters for structure.</li>
+    <li><strong>Capacitor voltage.</strong> I use it as a simple measure of how active the rail is, because more train activity should charge the capacitor faster.</li>
+  </ul>
+
+  <h2>What I built</h2>
+  <h3>Hardware</h3>
+  <p>The transmitter uses an ESP32-C6, three sensors, a MOSFET for power gating, and the supercapacitor. After I program the ESP32 over USB, it runs only from the energy stored in the supercapacitor.</p>
+  <!-- PHOTO SLOT 2: circuit schematic or board photo
+  <figure>
+    <img src="images/circuit.jpg" alt="Circuit of the PiezoRail transmitter node." width="800" height="600">
+    <figcaption>The transmitter node circuit.</figcaption>
+  </figure>
+  -->
+  <h3>Firmware</h3>
+  <p>The firmware is written around deep sleep, so the node uses as little energy as possible between readings. I wrote two transmission versions, one with ESP-NOW and one with Zigbee. The receiver firmware handles MQTT publishing, anomaly detection, and SD card logging.</p>
+  <!-- CODE SLOT: short firmware excerpt (deep-sleep loop), shown in a <pre><code> block. -->
+  <h3>Dashboard</h3>
+  <p>The dashboard has several tabs and uses Chart.js. It shows the live and logged data from the nodes.</p>
+  <!-- PHOTO SLOT 3: dashboard screenshots
+  <figure>
+    <img src="images/dashboard.png" alt="Screenshot of the PiezoRail dashboard with charts for vibration, temperature, and capacitor voltage." width="800" height="500">
+    <figcaption>The PiezoRail dashboard. The live site is offline now, so this is a saved screenshot.</figcaption>
+  </figure>
+  -->
+
+  <h2>The design journey</h2>
+  <h3>Grade 10: research without measurements</h3>
+  <p>I first worked on this idea in my school research team (OPSI) in Grade 10. My school had no oscilloscope and no budget, so I could not measure anything. The work stayed a literature study.</p>
+
+  <h3>First prototype: it burned</h3>
+  <p>My first prototype was a simple transducer on a breadboard. The circuit was messy and it burned during testing. I did not know why. The jury still understood the concept, but I knew I could not build on that circuit.</p>
+  <!-- PHOTO SLOT 4: burned breadboard
+  <figure>
+    <img src="images/breadboard-burned.jpg" alt="The first breadboard prototype after it burned." width="800" height="600">
+    <figcaption>The first prototype, after it burned.</figcaption>
+  </figure>
+  -->
+
+  <h3>Second prototype: rebuilt from zero</h3>
+  <p>I rebuilt the prototype from the beginning. At that stage it was only an energy harvester. It was not yet a monitoring system. I researched the circuit layout, planned every component, and soldered it by hand.</p>
+  <p>The result was weak. The peak output was about <strong>0.9 V</strong>. My target was <strong>2 to 5 V</strong>.</p>
+
+  <h3>The fix: pressure is force divided by area</h3>
+  <p>I used the idea that pressure equals force divided by area. If the same force acts on a smaller area, the pressure is higher. I arranged many glue sticks on top of the piezoelectric pad and clamped them under clear acrylic. The sticks concentrate the force on the pad.</p>
+  <p>The next test gave about <strong>9 V</strong>. This was an open-circuit measurement, with no load connected. It is not usable power. I explain this more in the Limits section.</p>
+
+  <h2>What I learned</h2>
+  <ul>
+    <li><strong>Measure before you claim.</strong> Without an oscilloscope I could only read papers. Once I could measure, I learned more in one test than in months of reading.</li>
+    <li><strong>A failure you do not understand cannot be fixed.</strong> After the breadboard burned, I stopped guessing. I planned every component and built the circuit again carefully.</li>
+    <li><strong>Simple physics can solve a hardware problem.</strong> Changing the contact area, not the pad, took the output from 0.9 V to about 9 V.</li>
+    <li><strong>Voltage is not power.</strong> A high open-circuit voltage can still deliver very little energy. I want to learn this properly in power electronics.</li>
+    <li><strong>One person cannot do everything.</strong> I kept the technical core, and I gave other jobs to teammates who were better at them.</li>
+  </ul>
+
+  <h2>Limits</h2>
+  <ul>
+    <li>PiezoRail has never been installed on a real railway. I do not know how it behaves with real trains.</li>
+    <li>The 9 V result is an open-circuit voltage with no load. It does not tell how much energy the pad delivers.</li>
+    <li>I have not properly measured the energy from one press. My rough estimate is that about 50 hand presses give around 1 V on the capacitor. This is an estimate, not a measurement.</li>
+    <li>The anomaly detection has not been tested on real rail data.</li>
+    <li>The dashboard is offline for now.</li>
+  </ul>
+  <p>Closing these gaps is the point of the next steps below.</p>
+
+  <h2>The team</h2>
+  <p>Perzolex Tech is a team of 7 students from different grades. I am the Lead Engineer and Team Lead. I built the hardware, firmware, and dashboard. I shared the other work by strength, and I chose and trained the presenters. For them I wrote an English training module and a bank of questions the judges might ask.</p>
+  <table>
+    <thead><tr><th>Member</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td>Ida Bagus Wididharma Raditya Putra Sanjaya (Radit)</td><td>Lead Engineer and Team Lead, hardware, firmware, dashboard, presenter</td></tr>
+      <tr><td>Louis Bryant Sianturi</td><td>Pitch and business side, presenter</td></tr>
+      <tr><td>Gede Panji Gelgel Wiradarma</td><td>Build support, presenter</td></tr>
+      <tr><td>Gede Surya Wibawa</td><td>Presenter</td></tr>
+      <tr><td>Akbar Sidharta Giri</td><td>Design and presentation materials, brochures, booth visitors</td></tr>
+      <tr><td>Aria Seta Malik Ibrahim</td><td>Booth visitors and brochures</td></tr>
+      <tr><td>Fahri Gilang Mahardika</td><td>Booth planning</td></tr>
+    </tbody>
+  </table>
+  <p class="small">Supervisors: Yuyu Pratiwi, M.Pd. helped arrange the team. Mr Muh Alwi Abdul Aziz supervised the team at the events.</p>
+  <p>PT KAI Daop 8 Surabaya stated its support for the project and sponsored the team's participation. There is no formal agreement (MoU).</p>
+
+  <h2>Awards</h2>
+  <table>
+    <thead><tr><th>Year</th><th>Event</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>2025</td><td>WSEEC</td><td>Silver</td></tr>
+      <tr><td>2025</td><td>ISIF</td><td>Gold</td></tr>
+      <tr><td>2026</td><td>Malaysia Technology Expo</td><td>Gold</td></tr>
+      <tr><td>2026</td><td>JDIE</td><td>Gold</td></tr>
+      <tr><td>2026</td><td>SHIE, Shanghai</td><td>Gold Medal, and the NRCT special award (Thailand Award for Best International Invention and Innovation)</td></tr>
+    </tbody>
+  </table>
+  <p class="small">The official project title on the SHIE certificates is "PiezoRail: IoT-Based Structural Monitoring System with Piezoelectric Energy Harvesting". SHIE 2026 was held in Shanghai on 11 to 13 June 2026.</p>
+  <p class="small">At JDIE 2026, my teammates presented the project, so my name is not on the official participant list. I built the project. At SHIE 2026, my name is first on the certificates.</p>
+  <figure>
+    <img src="shie-certificate.jpg" alt="Gold Medal certificate from the 9th China (Shanghai) International Exhibition of Inventions, 2026, for PiezoRail. Radit's name is first in the list of prize winners." width="900" height="1345">
+    <figcaption>SHIE 2026 Gold Medal certificate. My name is first in the list. The certificate number is hidden.</figcaption>
+  </figure>
+  <figure>
+    <img src="nrct-award.jpg" alt="Award from the National Research Council of Thailand: Thailand Award for the Best International Invention and Innovation, presented to the PiezoRail team." width="900" height="1257">
+    <figcaption>NRCT special award, presented at SHIE 2026. My name is first here too.</figcaption>
+  </figure>
+  <!-- PHOTO SLOT 5b: booth photo from SHIE (images/shie-booth.jpg), add here when available -->
+
+  <h2>Next steps</h2>
+  <ol>
+    <li>Study power electronics, so I can measure and improve how much usable energy the harvester delivers, not only the open-circuit voltage.</li>
+    <li>Measure the energy from each press properly.</li>
+    <li>Return to Indonesia and work with PT KAI on a self-powered monitoring node, starting with one short test section.</li>
+  </ol>
+
+  <div class="btns">
+    <a class="btn alt" href="about.html">About me</a>
+    <a class="btn alt" href="index.html">Home</a>
+  </div>
+</div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <p>Radit, SMA Taruna Nusantara Malang, Indonesia.</p>
+    <!-- TODO: add contact line here, same as on the home page -->
+  </div>
+</footer>
+</body>
+</html>
